@@ -416,6 +416,11 @@ func (r rfc2136Provider) SendMessage(msg *dns.Msg) error {
 			log.Infof("error in dns.Client.Exchange: %s", err)
 			return err
 		}
+		if resp != nil {
+			log.Debugf("Response not nil. Code received: %d", resp.Rcode)
+		} else {
+			log.Debug("Response nil. Nothing to do with it")
+		}
 		log.Warnf("warn in dns.Client.Exchange: %s", err)
 	}
 	if resp != nil && resp.Rcode != dns.RcodeSuccess {
