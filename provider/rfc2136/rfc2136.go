@@ -19,6 +19,7 @@ package rfc2136
 import (
 	"context"
 	"fmt"
+	"math"
 	"net"
 	"strconv"
 	"strings"
@@ -276,13 +277,34 @@ func (r rfc2136Provider) ApplyChanges(ctx context.Context, changes *plan.Changes
 
 	// only send if there are records available
 	if len(m.Ns) > 0 {
-		err := r.actions.SendMessage(m)
-		if err != nil {
-			return fmt.Errorf("RFC2136 update failed: %v", err)
+		// keep apart records to be sent
+		chunkSize := 5
+		allErrors := sendByChunks(m, r, chunkSize)
+		if len(allErrors) > 0 {
+			for _, e := range allErrors {
+				fmt.Printf("error sending message : %+v", e)
+			}
 		}
 	}
-
 	return nil
+}
+
+func sendByChunks(m *dns.Msg, r rfc2136Provider, chunkSize int) []error {   // m.Ns = 5  , chunk = 3
+	recordsToBeSent := m.Ns
+	var errorsFound []error
+	for i := 0; i < len(recordsToBeSent)/chunkSize; i++ {
+		upperBound := int(math.Max(float64((i+1)*chunkSize), float64(len(recordsToBeSent))))
+		m.Ns = recordsToBeSent[i*chunkSize:upperBound]
+		err := r.actions.SendMessage(m)
+		if err != nil {
+			if chunkSize == 1 {
+				errorsFound = append(errorsFound, err)
+				continue
+			}
+			errorsFound = append(errorsFound, sendByChunks(m, r, chunkSize/2)...)
+		}
+	}
+	return errorsFound
 }
 
 func (r rfc2136Provider) UpdateRecord(m *dns.Msg, oldEp *endpoint.Endpoint, newEp *endpoint.Endpoint) error {
