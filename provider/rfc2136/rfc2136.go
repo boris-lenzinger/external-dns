@@ -410,6 +410,7 @@ func (r rfc2136Provider) SendMessage(msg *dns.Msg) error {
 		c.Net = "tcp"
 	}
 
+	log.Debugf("Full message: %+v", *msg)
 	resp, _, err := c.Exchange(msg, r.nameserver)
 	if err != nil {
 		if resp != nil && resp.Rcode != dns.RcodeSuccess {
