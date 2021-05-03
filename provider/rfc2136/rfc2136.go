@@ -298,7 +298,7 @@ func sendByChunks(m *dns.Msg, r rfc2136Provider, chunkSize int) []error {   // m
 	iterations := len(recordsToBeSent)/chunkSize
 	for i := 0; i < iterations; i++ {
 		log.Debugf("(%d/%d) Updating records per chunk of %d\n", i+1, iterations, chunkSize)
-		upperBound := int(math.Max(float64((i+1)*chunkSize), float64(len(recordsToBeSent))))
+		upperBound := int(math.Min(float64((i+1)*chunkSize), float64(len(recordsToBeSent))))
 		m.Ns = recordsToBeSent[i*chunkSize:upperBound]
 		err := r.actions.SendMessage(m)
 		if err == nil {
