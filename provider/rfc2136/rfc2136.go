@@ -277,13 +277,13 @@ func (r rfc2136Provider) ApplyChanges(ctx context.Context, changes *plan.Changes
 
 	// only send if there are records available
 	if len(m.Ns) > 0 {
-		fmt.Printf("Using rfc2136 provider as %+v\n", r)
+		log.Debugf("Using rfc2136 provider as %+v\n", r)
 		// keep apart records to be sent
 		chunkSize := 5
 		allErrors := sendByChunks(m, r, chunkSize)
 		if len(allErrors) > 0 {
 			for _, e := range allErrors {
-				fmt.Printf("error sending message : %+v", e)
+				log.Debugf("error sending message : %+v\n", e)
 			}
 		}
 	}
@@ -297,28 +297,28 @@ func sendByChunks(m *dns.Msg, r rfc2136Provider, chunkSize int) []error {   // m
 	var errorsFound []error
 	iterations := len(recordsToBeSent)/chunkSize
 	for i := 0; i < iterations; i++ {
-		fmt.Sprintf("(%d/%d) Updating records per chunk of %d", i+1, iterations, chunkSize)
+		log.Debugf("(%d/%d) Updating records per chunk of %d\n", i+1, iterations, chunkSize)
 		upperBound := int(math.Max(float64((i+1)*chunkSize), float64(len(recordsToBeSent))))
 		m.Ns = recordsToBeSent[i*chunkSize:upperBound]
 		err := r.actions.SendMessage(m)
 		if err == nil {
-			fmt.Printf("updated %d record(s)\n", len(m.Ns))
+			log.Debugf("updated %d record(s)\n", len(m.Ns))
 			continue
 		}
 		errorsCount++
 		if errorsCount > 3 {
-			fmt.Println("Stopping the trace. Useless to go further !! Returning empty errors array")
+			log.Debugf("Stopping the trace. Useless to go further !! Returning empty errors array\n")
 			return []error{}
 		}
-		fmt.Printf("Error received. Let's check what we can do")
+		log.Debugf("Error received. Let's check what we can do\n")
 		if chunkSize == 1 {
-			fmt.Println("[DEBUG] Chunk size is 1. Cannot be more granular. Reporting error")
+			log.Debugf("[DEBUG] Chunk size is 1. Cannot be more granular. Reporting error\n")
 			errorsFound = append(errorsFound, err)
 			continue
 		}
-		fmt.Printf("[DEBUG] Received an error. Decreasing chunk size to %d", chunkSize/2)
+		log.Debugf("[DEBUG] Received an error. Decreasing chunk size to %d\n", chunkSize/2)
 		errorsFound = append(errorsFound, sendByChunks(m, r, chunkSize/2)...)
-		fmt.Printf("[DEBUG] END OF RECURSION - Errors count : %d. Proceeding to next records.\n", len(errorsFound))
+		log.Debugf("[DEBUG] END OF RECURSION - Errors count : %d. Proceeding to next records.\n", len(errorsFound))
 	}
 	return errorsFound
 }
