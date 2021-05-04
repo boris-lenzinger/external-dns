@@ -247,17 +247,39 @@ func (r rfc2136Provider) List() ([]dns.RR, error) {
 func (r rfc2136Provider) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
 	log.Debugf("ApplyChanges (Create: %d, UpdateOld: %d, UpdateNew: %d, Delete: %d)", len(changes.Create), len(changes.UpdateOld), len(changes.UpdateNew), len(changes.Delete))
 
-	m := new(dns.Msg)
-	m.SetUpdate(r.zoneName)
+	endpoints := [][]*endpoint.Endpoint{changes.Create, changes.Delete}
+	matchingFunc := []func(*dns.Msg,*endpoint.Endpoint)error{r.AddRecord, r.RemoveRecord}
 
-	for _, ep := range changes.Create {
-		if !r.domainFilter.Match(ep.DNSName) {
-			log.Debugf("Skipping record %s because it was filtered out by the specified --domain-filter", ep.DNSName)
-			continue
+	var m *dns.Msg
+	chunkSize := 5
+	for i, endpointsArray := range endpoints {
+		m = &dns.Msg{}
+		m.SetUpdate(r.zoneName)
+		count := 0
+		for _, ep := range endpointsArray {
+			if !r.domainFilter.Match(ep.DNSName) {
+				log.Debugf("Skipping record %s because it was filtered out by the specified --domain-filter", ep.DNSName)
+				continue
+			}
+
+			matchingFunc[i](m, ep)
+			count++
+			if count % chunkSize == 0  {
+				if len(m.Ns) > 0 {
+					log.Debugf("Sending message since len(m.Ns) = %d", len(m.Ns))
+					err := r.actions.SendMessage(m)
+					if err != nil {
+						log.Errorf("error while sending %dth chunk : %+v", count, err)
+					}
+				}
+				m = &dns.Msg{}
+				m.SetUpdate(r.zoneName)
+			}
 		}
-
-		r.AddRecord(m, ep)
 	}
+
+	m = &dns.Msg{}
+	m.SetUpdate(r.zoneName)
 	for i, ep := range changes.UpdateNew {
 		if !r.domainFilter.Match(ep.DNSName) {
 			log.Debugf("Skipping record %s because it was filtered out by the specified --domain-filter", ep.DNSName)
@@ -265,14 +287,6 @@ func (r rfc2136Provider) ApplyChanges(ctx context.Context, changes *plan.Changes
 		}
 
 		r.UpdateRecord(m, changes.UpdateOld[i], ep)
-	}
-	for _, ep := range changes.Delete {
-		if !r.domainFilter.Match(ep.DNSName) {
-			log.Debugf("Skipping record %s because it was filtered out by the specified --domain-filter", ep.DNSName)
-			continue
-		}
-
-		r.RemoveRecord(m, ep)
 	}
 
 	// only send if there are records available
