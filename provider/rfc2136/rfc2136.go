@@ -48,14 +48,15 @@ const (
 // rfc2136 provider type
 type rfc2136Provider struct {
 	provider.BaseProvider
-	nameserver    string
-	zoneName      string
-	tsigKeyName   string
-	tsigSecret    string
-	tsigSecretAlg string
-	insecure      bool
-	axfr          bool
-	minTTL        time.Duration
+	nameserver         string
+	zoneName           string
+	tsigKeyName        string
+	tsigSecret         string
+	tsigSecretAlg      string
+	insecure           bool
+	axfr               bool
+	minTTL             time.Duration
+	compressionEnabled bool
 
 	// options specific to rfc3645 gss-tsig support
 	gssTsig      bool
@@ -85,7 +86,7 @@ type rfc2136Actions interface {
 }
 
 // NewRfc2136Provider is a factory function for OpenStack rfc2136 providers
-func NewRfc2136Provider(host string, port int, zoneName string, insecure bool, keyName string, secret string, secretAlg string, axfr bool, domainFilter endpoint.DomainFilter, dryRun bool, minTTL time.Duration, gssTsig bool, krb5Username string, krb5Password string, krb5Realm string, actions rfc2136Actions) (provider.Provider, error) {
+func NewRfc2136Provider(host string, port int, zoneName string, insecure bool, keyName string, secret string, secretAlg string, axfr bool, domainFilter endpoint.DomainFilter, dryRun bool, minTTL time.Duration, gssTsig bool, krb5Username string, krb5Password string, krb5Realm string, enableCompression bool, actions rfc2136Actions) (provider.Provider, error) {
 	secretAlgChecked, ok := tsigAlgs[secretAlg]
 	if !ok && !insecure && !gssTsig {
 		return nil, errors.Errorf("%s is not supported TSIG algorithm", secretAlg)
@@ -96,17 +97,18 @@ func NewRfc2136Provider(host string, port int, zoneName string, insecure bool, k
 	}
 
 	r := &rfc2136Provider{
-		nameserver:   net.JoinHostPort(host, strconv.Itoa(port)),
-		zoneName:     dns.Fqdn(zoneName),
-		insecure:     insecure,
-		gssTsig:      gssTsig,
-		krb5Username: krb5Username,
-		krb5Password: krb5Password,
-		krb5Realm:    strings.ToUpper(krb5Realm),
-		domainFilter: domainFilter,
-		dryRun:       dryRun,
-		axfr:         axfr,
-		minTTL:       minTTL,
+		nameserver:         net.JoinHostPort(host, strconv.Itoa(port)),
+		zoneName:           dns.Fqdn(zoneName),
+		insecure:           insecure,
+		gssTsig:            gssTsig,
+		krb5Username:       krb5Username,
+		krb5Password:       krb5Password,
+		krb5Realm:          strings.ToUpper(krb5Realm),
+		domainFilter:       domainFilter,
+		dryRun:             dryRun,
+		axfr:               axfr,
+		minTTL:             minTTL,
+		compressionEnabled: enableCompression,
 	}
 	if actions != nil {
 		r.actions = actions
@@ -335,6 +337,7 @@ func (r rfc2136Provider) RemoveRecord(m *dns.Msg, ep *endpoint.Endpoint) error {
 }
 
 func (r rfc2136Provider) SendMessage(msg *dns.Msg) error {
+	msg.Compress = r.compressionEnabled
 	if r.dryRun {
 		log.Debugf("SendMessage.skipped")
 		return nil
