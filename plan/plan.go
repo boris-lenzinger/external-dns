@@ -18,6 +18,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"strconv"
 	"strings"
 
@@ -143,6 +144,10 @@ func (p *Plan) Calculate() *Plan {
 			if row.current != nil && len(row.candidates) > 0 { //dns name is taken
 				update := t.resolver.ResolveUpdate(row.current, row.candidates)
 				// compare "update" to "current" to figure out if actual update is required
+				logrus.Debugf("[plan.Calculate] Checking conditions to add record to updateNew and updateOld")
+				logrus.Debugf("shouldUpdateTTL(update, row.current) = %t", shouldUpdateTTL(update, row.current))
+				logrus.Debugf("targetChanged(update, row.current) = %t", targetChanged(update, row.current))
+				logrus.Debugf("p.shouldUpdateProviderSpecific(update, row.current) = %t", p.shouldUpdateProviderSpecific(update, row.current))
 				if shouldUpdateTTL(update, row.current) || targetChanged(update, row.current) || p.shouldUpdateProviderSpecific(update, row.current) {
 					inheritOwner(row.current, update)
 					changes.UpdateNew = append(changes.UpdateNew, update)
