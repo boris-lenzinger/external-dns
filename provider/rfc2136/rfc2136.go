@@ -300,7 +300,11 @@ func (r rfc2136Provider) AddRecord(m *dns.Msg, ep *endpoint.Endpoint) error {
 	log.Debugf("AddRecord.ep=%s", ep)
 
 	var ttl = int64(r.minTTL.Seconds())
+	log.Debugf("[AddRecord] TTL from the configuration (in seconds) %d", ttl)
+	log.Debugf("[AddRecord] Is record TTL configured ? %T", ep.RecordTTL.IsConfigured())
+	log.Debugf("[AddRecord] TTL record for endpoint: %d", ep.RecordTTL)
 	if ep.RecordTTL.IsConfigured() && int64(ep.RecordTTL) > ttl {
+		log.Debugf("[AddRecord] TTL of record is larger than the one configured. Using the TTL of the record")
 		ttl = int64(ep.RecordTTL)
 	}
 
