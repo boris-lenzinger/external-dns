@@ -47,7 +47,6 @@ const (
 
 // rfc2136 provider type
 type rfc2136Provider struct {
-	provider.BaseProvider
 	nameserver         string
 	zoneName           string
 	tsigKeyName        string
@@ -68,6 +67,22 @@ type rfc2136Provider struct {
 	domainFilter endpoint.DomainFilter
 	dryRun       bool
 	actions      rfc2136Actions
+}
+
+func (r rfc2136Provider) AdjustEndpoints(endpoints []*endpoint.Endpoint) []*endpoint.Endpoint {
+	var endpointsWithAdjustedTTL []*endpoint.Endpoint
+	minTTLAsInt64 := int64(r.minTTL.Seconds())
+	for _, e := range endpoints {
+		if int64(e.RecordTTL) < minTTLAsInt64 {
+			e.RecordTTL = endpoint.TTL(minTTLAsInt64)
+		}
+		endpointsWithAdjustedTTL = append(endpointsWithAdjustedTTL)
+	}
+	return endpointsWithAdjustedTTL
+}
+
+func (r rfc2136Provider) PropertyValuesEqual(name, previous, current string) bool {
+	return previous == current
 }
 
 var (
