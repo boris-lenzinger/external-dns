@@ -74,8 +74,12 @@ func (r rfc2136Provider) AdjustEndpoints(endpoints []*endpoint.Endpoint) []*endp
 
 	minTTLAsInt64 := int64(r.minTTL.Seconds())
 	for _, e := range endpoints {
+		log.Debugf("[AdjustEndpoints] Endpoint being tested: %+v", e)
+		log.Debugf("[AdjustEndpoints] Checking if recordTTL (%d) is lower than minTTL imposed (%d)", e.RecordTTL, minTTLAsInt64)
 		if e.RecordTTL.IsConfigured() && int64(e.RecordTTL) < minTTLAsInt64 {
 			e.RecordTTL = endpoint.TTL(minTTLAsInt64)
+		} else {
+			log.Debugf("[AdjustEndpoints] Entry not modified.")
 		}
 		endpointsWithAdjustedTTL = append(endpointsWithAdjustedTTL, e)
 	}
