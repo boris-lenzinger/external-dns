@@ -325,7 +325,7 @@ func (r rfc2136Provider) AddRecord(m *dns.Msg, ep *endpoint.Endpoint) error {
 	log.Debugf("[AddRecord] TTL record for endpoint: %d", ep.RecordTTL)
 
 	for _, target := range ep.Targets {
-		newRR := fmt.Sprintf("%s %d %s %s", ep.DNSName, ttl, ep.RecordType, target)
+		newRR := fmt.Sprintf("%s %d %s %s", ep.DNSName, ep.RecordTTL, ep.RecordType, target)
 		log.Infof("Adding RR: %s", newRR)
 
 		rr, err := dns.NewRR(newRR)
