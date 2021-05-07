@@ -71,12 +71,13 @@ type rfc2136Provider struct {
 
 func (r rfc2136Provider) AdjustEndpoints(endpoints []*endpoint.Endpoint) []*endpoint.Endpoint {
 	var endpointsWithAdjustedTTL []*endpoint.Endpoint
+
 	minTTLAsInt64 := int64(r.minTTL.Seconds())
 	for _, e := range endpoints {
-		if int64(e.RecordTTL) < minTTLAsInt64 {
+		if e.RecordTTL.IsConfigured() && int64(e.RecordTTL) < minTTLAsInt64 {
 			e.RecordTTL = endpoint.TTL(minTTLAsInt64)
 		}
-		endpointsWithAdjustedTTL = append(endpointsWithAdjustedTTL)
+		endpointsWithAdjustedTTL = append(endpointsWithAdjustedTTL, e)
 	}
 	return endpointsWithAdjustedTTL
 }
@@ -318,10 +319,6 @@ func (r rfc2136Provider) AddRecord(m *dns.Msg, ep *endpoint.Endpoint) error {
 	log.Debugf("[AddRecord] TTL from the configuration (in seconds) %d", ttl)
 	log.Debugf("[AddRecord] Is record TTL configured ? %t", ep.RecordTTL.IsConfigured())
 	log.Debugf("[AddRecord] TTL record for endpoint: %d", ep.RecordTTL)
-	if ep.RecordTTL.IsConfigured() && int64(ep.RecordTTL) > ttl {
-		log.Debugf("[AddRecord] TTL of record is larger than the one configured. Using the TTL of the record")
-		ttl = int64(ep.RecordTTL)
-	}
 
 	for _, target := range ep.Targets {
 		newRR := fmt.Sprintf("%s %d %s %s", ep.DNSName, ttl, ep.RecordType, target)
