@@ -320,12 +320,15 @@ func (r rfc2136Provider) AddRecord(m *dns.Msg, ep *endpoint.Endpoint) error {
 	log.Debugf("AddRecord.ep=%s", ep)
 
 	var ttl = int64(r.minTTL.Seconds())
+    if ep.RecordTTL.IsConfigured() && int64(ep.RecordTTL) > ttl {
+       ttl = int64(ep.RecordTTL)
+    }
 	log.Debugf("[AddRecord] TTL from the configuration (in seconds) %d", ttl)
 	log.Debugf("[AddRecord] Is record TTL configured ? %t", ep.RecordTTL.IsConfigured())
 	log.Debugf("[AddRecord] TTL record for endpoint: %d", ep.RecordTTL)
 
 	for _, target := range ep.Targets {
-		newRR := fmt.Sprintf("%s %d %s %s", ep.DNSName, ep.RecordTTL, ep.RecordType, target)
+		newRR := fmt.Sprintf("%s %d %s %s", ep.DNSName, ttl, ep.RecordType, target)
 		log.Infof("Adding RR: %s", newRR)
 
 		rr, err := dns.NewRR(newRR)
